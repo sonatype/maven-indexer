@@ -169,6 +169,18 @@ under the License.
   <build>
     <plugins>
       <plugin>
+          <groupId>org.sonatype.plugins</groupId>
+          <artifactId>nexus-staging-maven-plugin</artifactId>
+          <version>1.2</version>
+          <extensions>true</extensions>
+          <configuration>
+              <nexusUrl>https://repository.sonatype.org/</nexusUrl>
+              <serverId>sonatype-grid</serverId>
+              <skipRemoteStaging>true</skipRemoteStaging> <!-- For now, we want deferred deploy only -->
+          </configuration>
+      </plugin>
+
+      <plugin>
         <groupId>org.codehaus.plexus</groupId>
         <artifactId>plexus-component-metadata</artifactId>
         <executions>
