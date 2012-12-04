@@ -176,7 +176,7 @@ under the License.
           <configuration>
               <nexusUrl>https://repository.sonatype.org/</nexusUrl>
               <serverId>sonatype-grid</serverId>
-              <skipRemoteStaging>true</skipRemoteStaging> <!-- For now, we want deferred deploy only -->
+              <skipStaging>true</skipStaging> <!-- For now, we want deferred deploy only -->
           </configuration>
       </plugin>
 
