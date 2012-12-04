@@ -52,10 +52,10 @@ under the License.
   </contributors>
 
   <scm>
-    <connection>scm:svn:http://svn.apache.org/repos/asf/maven/indexer/trunk</connection>
-    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/maven/indexer/trunk</developerConnection>
-    <url>http://svn.apache.org/repos/asf/maven/indexer/trunk</url>
-  </scm>
+     <connection>scm:git:git://github.com/sonatype/maven-indexer.git</connection>
+     <developerConnection>scm:git:git@github.com:sonatype/maven-indexer.git</developerConnection>
+     <url>https://github.com/sonatype/maven-indexer</url>
+   </scm>
 
   <issueManagement>
     <system>jira</system>
@@ -82,10 +82,14 @@ under the License.
   </properties>
 
   <distributionManagement>
-    <site>
-      <id>apache.website</id>
-      <url>${distributionSiteUrl}</url>
-    </site>
+    <repository>
+      <id>forge-releases</id>
+      <url>https://repository.sonatype.org/content/repositories/releases</url>
+    </repository>
+    <snapshotRepository>
+      <id>forge-snapshots</id>
+      <url>https://repository.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
   </distributionManagement>
 
   <dependencyManagement>
