@@ -23,43 +23,51 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.maven.index.*;
 import org.apache.maven.index.context.IndexCreator;
+import org.apache.maven.index.locator.*;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.component.annotations.Component;
+import org.codehaus.plexus.util.FileUtils;
+import org.codehaus.plexus.util.StringUtils;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Created with IntelliJ IDEA.
- * User: kperikov
- * Date: 20.03.13
- * Time: 10:55 *
+ * Created with IntelliJ IDEA. User: kperikov Date: 20.03.13 Time: 10:55 * how
+ * to run it /tmp]$ java -jar indexer-cli-5.1.1-SNAPSHOT.jar -t full -r
+ * /test/prop/kcm/sonatype-work/nexus/storage/central -i ./central -c
+ * dependencies
  */
 @Component(role = IndexCreator.class, hint = DependenciesIndexCreator.ID)
 public class DependenciesIndexCreator extends AbstractIndexCreator
         implements LegacyDocumentUpdater {
 
-    public static final String ID = "dependecies";
+    public static final String ID = "dependencies";
+    public static final IndexerField FLD_DEPENDENCIES = new IndexerField(MAVEN.DEPENDENCIES, IndexerFieldVersion.V3,
+            "dependencies", "Dependencies", Field.Store.YES, Field.Index.ANALYZED);
+    public static final IndexerField FLD_GROUP_ID = new IndexerField(MAVEN.GROUP_ID, IndexerFieldVersion.V3,
+            "groupId", "GroupID", Field.Store.NO, Field.Index.ANALYZED);
+    public static final IndexerField FLD_ARTIFACT_ID = new IndexerField(MAVEN.ARTIFACT_ID, IndexerFieldVersion.V3,
+            "artifactId", "ArtifactID", Field.Store.NO, Field.Index.ANALYZED);
+    public static final IndexerField FLD_VERSION = new IndexerField(MAVEN.VERSION, IndexerFieldVersion.V3,
+            "version", "Version", Field.Store.NO, Field.Index.ANALYZED);
+    private Locator jl = new JavadocLocator();
+    private Locator sl = new SourcesLocator();
+    private Locator sigl = new SignatureLocator();
+    private Locator sha1l = new Sha1Locator();
 
     public DependenciesIndexCreator() {
         super(ID);
     }
-
-    public static final IndexerField FLD_DEPENDENCIES = new IndexerField(MAVEN.DEPENDENCIES, IndexerFieldVersion.V3,
-            "dependencies", "Dependencies", Field.Store.YES, Field.Index.ANALYZED);
-
-    public static final IndexerField FLD_GROUP_ID = new IndexerField(MAVEN.GROUP_ID, IndexerFieldVersion.V3,
-            "groupId", "GroupID", Field.Store.NO, Field.Index.ANALYZED);
-
-    public static final IndexerField FLD_ARTIFACT_ID = new IndexerField(MAVEN.ARTIFACT_ID, IndexerFieldVersion.V3,
-            "artifactId", "ArtifactID", Field.Store.NO, Field.Index.ANALYZED);
-
-    public static final IndexerField FLD_VERSION = new IndexerField(MAVEN.VERSION, IndexerFieldVersion.V3,
-            "version", "Version", Field.Store.NO, Field.Index.ANALYZED);
 
     public Collection<IndexerField> getIndexerFields() {
         return Arrays.asList(FLD_GROUP_ID, FLD_ARTIFACT_ID, FLD_VERSION, FLD_DEPENDENCIES);
@@ -74,36 +82,51 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
             ai.fextension = "pom";
         }
         // TODO handle artifacts without poms
-//        if (pom != null) {
-//            if (ai.classifier != null) {
-//                ai.sourcesExists = ArtifactAvailablility.NOT_AVAILABLE;
-//                ai.javadocExists = ArtifactAvailablility.NOT_AVAILABLE;
-//            } else {
-//                File sources = sl.locate(pom);
-//                if (!sources.exists()) {
-//                    ai.sourcesExists = ArtifactAvailablility.NOT_PRESENT;
-//                } else {
-//                    ai.sourcesExists = ArtifactAvailablility.PRESENT;
-//                }
-//
-//                File javadoc = jl.locate(pom);
-//                if (!javadoc.exists()) {
-//                    ai.javadocExists = ArtifactAvailablility.NOT_PRESENT;
-//                } else {
-//                    ai.javadocExists = ArtifactAvailablility.PRESENT;
-//                }
-//            }
-//        }
+        if (pom != null) {
+            if (ai.classifier != null) {
+                ai.sourcesExists = ArtifactAvailablility.NOT_AVAILABLE;
+                ai.javadocExists = ArtifactAvailablility.NOT_AVAILABLE;
+            } else {
+                File sources = sl.locate(pom);
+                if (!sources.exists()) {
+                    ai.sourcesExists = ArtifactAvailablility.NOT_PRESENT;
+                } else {
+                    ai.sourcesExists = ArtifactAvailablility.PRESENT;
+                }
+
+                File javadoc = jl.locate(pom);
+                if (!javadoc.exists()) {
+                    ai.javadocExists = ArtifactAvailablility.NOT_PRESENT;
+                } else {
+                    ai.javadocExists = ArtifactAvailablility.PRESENT;
+                }
+            }
+        }
 
         ai.dependencies = "";
-
         Model model = artifactContext.getPomModel();
+        MavenXpp3Reader mavenXpp3Reader = new MavenXpp3Reader();
+        Model correctModel = null;
+        try {
+            correctModel = mavenXpp3Reader.read(new FileInputStream(artifactContext.getPom()));
+        } catch (XmlPullParserException ex) {
+            Logger.getLogger(DependenciesIndexCreator.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        if (correctModel != null) {
+            final List<Dependency> dependencies = correctModel.getDependencies();
+            if (dependencies.size() > 0) {
+                StringBuffer sb = new StringBuffer();
+                for (Dependency d : dependencies) {
+                    sb.append(d.getGroupId()).append(":").append(d.getArtifactId()).append(":").append(d.getVersion()).append(";");
+                }
+                ai.dependencies = sb.toString();
+            }
+        }
+
         if (model != null) {
             ai.name = model.getName();
             ai.description = model.getDescription();
-
-            final List<Dependency> dependencies = model.getDependencies();
-            ai.dependencies = dependencies.toArray().toString();
 
             // for main artifacts (without classifier) only:
             if (ai.classifier == null) {
@@ -120,10 +143,10 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
         }
 
 
-//        if ("pom".equals(ai.packaging)) {
-//            // special case, the POM _is_ the artifact
-//            artifact = pom;
-//        }
+        if ("pom".equals(ai.packaging)) {
+            // special case, the POM _is_ the artifact
+            artifact = pom;
+        }
 
 //        if (artifact != null) {
 //            File signature = sigl.locate(artifact);
@@ -160,22 +183,9 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
         document.add(FLD_GROUP_ID.toField(artifactInfo.groupId));
         document.add(FLD_ARTIFACT_ID.toField(artifactInfo.artifactId));
         document.add(FLD_VERSION.toField(artifactInfo.version));
-        document.add(FLD_DEPENDENCIES.toField(artifactInfo.dependencies));
-//        if (artifactInfo.name != null) {
-//            document.add(FLD_NAME.toField(artifactInfo.name));
-//        }
-//        if (artifactInfo.description != null) {
-//            document.add(FLD_DESCRIPTION.toField(artifactInfo.description));
-//        }
-//        if (artifactInfo.packaging != null) {
-//            document.add(FLD_PACKAGING.toField(artifactInfo.packaging));
-//        }
-//        if (artifactInfo.classifier != null) {
-//            document.add(FLD_CLASSIFIER.toField(artifactInfo.classifier));
-//        }
-//        if (artifactInfo.sha1 != null) {
-//            document.add(FLD_SHA1.toField(artifactInfo.sha1));
-//        }
+        if (!artifactInfo.dependencies.equalsIgnoreCase("")) {
+            document.add(FLD_DEPENDENCIES.toField(artifactInfo.dependencies));
+        }
     }
 
     public boolean updateArtifactInfo(Document document, ArtifactInfo artifactInfo) {

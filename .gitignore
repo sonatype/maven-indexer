@@ -12,6 +12,9 @@ target/
 .project
 .settings/
 
+# NetBeans related
+nbactions.xml
+
 # Intellij
 *.ipr
 *.iml
