@@ -41,23 +41,30 @@ import java.util.logging.Logger;
 
 /**
  * Created with IntelliJ IDEA. User: kperikov Date: 20.03.13 Time: 10:55 * how
- * to run it /tmp]$ java -jar indexer-cli-5.1.1-SNAPSHOT.jar -t full -r
- * /test/prop/kcm/sonatype-work/nexus/storage/central -i ./central -c
- * dependencies
+ * to run it /tmp]$ java -jar indexer-cli-5.1.1-SNAPSHOT.jar -t full -r /test/prop/kcm/sonatype-work/nexus/storage/central -i ./central -c dependencies
  */
 @Component(role = IndexCreator.class, hint = DependenciesIndexCreator.ID)
 public class DependenciesIndexCreator extends AbstractIndexCreator
         implements LegacyDocumentUpdater {
 
     public static final String ID = "dependencies";
+    public static final IndexerField FLD_DEPENDENCIES_KWD = new IndexerField(MAVEN.DEPENDENCIES, IndexerFieldVersion.V1,
+            "d", "Dependencies (as keyword)", Field.Store.YES, Field.Index.NOT_ANALYZED);
     public static final IndexerField FLD_DEPENDENCIES = new IndexerField(MAVEN.DEPENDENCIES, IndexerFieldVersion.V3,
             "dependencies", "Dependencies", Field.Store.YES, Field.Index.ANALYZED);
     public static final IndexerField FLD_GROUP_ID = new IndexerField(MAVEN.GROUP_ID, IndexerFieldVersion.V3,
             "groupId", "GroupID", Field.Store.NO, Field.Index.ANALYZED);
+    public static final IndexerField FLD_GROUP_ID_KWD = new IndexerField(MAVEN.GROUP_ID, IndexerFieldVersion.V1,
+            "g", "GroupID (as keyword)", Field.Store.NO, Field.Index.NOT_ANALYZED);
     public static final IndexerField FLD_ARTIFACT_ID = new IndexerField(MAVEN.ARTIFACT_ID, IndexerFieldVersion.V3,
             "artifactId", "ArtifactID", Field.Store.NO, Field.Index.ANALYZED);
+    public static final IndexerField FLD_ARTIFACT_ID_KWD = new IndexerField(MAVEN.ARTIFACT_ID, IndexerFieldVersion.V1,
+            "a", "ArtifactID (as keyword)", Field.Store.NO, Field.Index.NOT_ANALYZED);
     public static final IndexerField FLD_VERSION = new IndexerField(MAVEN.VERSION, IndexerFieldVersion.V3,
             "version", "Version", Field.Store.NO, Field.Index.ANALYZED);
+    public static final IndexerField FLD_VERSION_KWD = new IndexerField(MAVEN.VERSION, IndexerFieldVersion.V1,
+            "v", "Version (as keyword)", Field.Store.NO, Field.Index.NOT_ANALYZED);
+
     private Locator jl = new JavadocLocator();
     private Locator sl = new SourcesLocator();
     private Locator sigl = new SignatureLocator();
@@ -68,7 +75,7 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
     }
 
     public Collection<IndexerField> getIndexerFields() {
-        return Arrays.asList(FLD_GROUP_ID, FLD_ARTIFACT_ID, FLD_VERSION, FLD_DEPENDENCIES);
+        return Arrays.asList(FLD_GROUP_ID, FLD_ARTIFACT_ID, FLD_VERSION, FLD_DEPENDENCIES, FLD_DEPENDENCIES_KWD, FLD_GROUP_ID_KWD, FLD_ARTIFACT_ID_KWD, FLD_VERSION_KWD);
     }
 
     public void populateArtifactInfo(ArtifactContext artifactContext) throws IOException {
@@ -173,10 +180,12 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
                         ArtifactInfo.FS).append(artifactInfo.sourcesExists.toString()).append(ArtifactInfo.FS).append(
                         artifactInfo.javadocExists.toString()).append(ArtifactInfo.FS).append(artifactInfo.signatureExists.toString()).append(
                         ArtifactInfo.FS).append(artifactInfo.fextension).toString();
-//        document.add(FLD_INFO.toField(info));
-//        document.add(FLD_GROUP_ID_KW.toField(artifactInfo.groupId));
-//        document.add(FLD_ARTIFACT_ID_KW.toField(artifactInfo.artifactId));
-//        document.add(FLD_VERSION_KW.toField(artifactInfo.version));
+
+        // V1
+        document.add( FLD_GROUP_ID_KWD.toField( artifactInfo.groupId ) );
+        document.add( FLD_ARTIFACT_ID_KWD.toField( artifactInfo.artifactId ) );
+        document.add( FLD_VERSION_KWD.toField( artifactInfo.version ) );
+        document.add( FLD_DEPENDENCIES_KWD.toField( artifactInfo.dependencies ) );
         // V3
         document.add(FLD_GROUP_ID.toField(artifactInfo.groupId));
         document.add(FLD_ARTIFACT_ID.toField(artifactInfo.artifactId));
