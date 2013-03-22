@@ -28,8 +28,6 @@ import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.component.annotations.Component;
-import org.codehaus.plexus.util.FileUtils;
-import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 import java.io.File;
@@ -116,7 +114,7 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
         if (correctModel != null) {
             final List<Dependency> dependencies = correctModel.getDependencies();
             if (dependencies.size() > 0) {
-                StringBuffer sb = new StringBuffer();
+                StringBuilder sb = new StringBuilder();
                 for (Dependency d : dependencies) {
                     sb.append(d.getGroupId()).append(":").append(d.getArtifactId()).append(":").append(d.getVersion()).append(";");
                 }
