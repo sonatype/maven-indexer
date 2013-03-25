@@ -33,11 +33,11 @@ import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Scanner;
 
 /**
  * Created with IntelliJ IDEA. User: kperikov Date: 20.03.13 Time: 10:55 * how
@@ -64,7 +64,6 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
             "version", "Version", Field.Store.NO, Field.Index.ANALYZED);
     public static final IndexerField FLD_VERSION_KWD = new IndexerField(MAVEN.VERSION, IndexerFieldVersion.V1,
             "v", "Version (as keyword)", Field.Store.NO, Field.Index.NOT_ANALYZED);
-
     private Locator jl = new JavadocLocator();
     private Locator sl = new SourcesLocator();
     private Locator sigl = new SignatureLocator();
@@ -111,21 +110,35 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
         ai.dependencies = "";
         Model model = artifactContext.getPomModel();
         MavenXpp3Reader mavenXpp3Reader = new MavenXpp3Reader();
-        Model correctModel = null;
-        try {
-            correctModel = mavenXpp3Reader.read(new FileInputStream(artifactContext.getPom()));
-        } catch (XmlPullParserException ex) {
-            Logger.getLogger(DependenciesIndexCreator.class.getName()).log(Level.SEVERE, null, ex);
+
+        Scanner sc = new Scanner(new FileInputStream(artifactContext.getPom()));
+        boolean badPom = false;
+        while (sc.hasNextLine()) {
+            String temp = sc.nextLine();
+            if (temp.contains("#")) {
+                badPom = true;
+                break;
+            }
         }
 
-        if (correctModel != null) {
-            final List<Dependency> dependencies = correctModel.getDependencies();
-            if (dependencies.size() > 0) {
-                StringBuilder sb = new StringBuilder();
-                for (Dependency d : dependencies) {
-                    sb.append(d.getGroupId()).append(":").append(d.getArtifactId()).append(":").append(d.getVersion()).append(";");
+        Model correctModel;
+        if (!badPom) {
+            try {
+                correctModel = mavenXpp3Reader.read(new InputStreamReader(new FileInputStream(artifactContext.getPom()), "UTF8"));
+            } catch (XmlPullParserException e) {
+                System.out.println(artifactContext.getPom().toString());
+                e.printStackTrace();
+                correctModel = null;
+            }
+            if (correctModel != null) {
+                final List<Dependency> dependencies = correctModel.getDependencies();
+                if (dependencies.size() > 0) {
+                    StringBuilder sb = new StringBuilder();
+                    for (Dependency d : dependencies) {
+                        sb.append(d.getGroupId()).append(":").append(d.getArtifactId()).append(":").append(d.getVersion()).append(";");
+                    }
+                    ai.dependencies = sb.toString();
                 }
-                ai.dependencies = sb.toString();
             }
         }
 
@@ -182,16 +195,16 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
                         ArtifactInfo.FS).append(artifactInfo.fextension).toString();
 
         // V1
-        document.add( FLD_GROUP_ID_KWD.toField( artifactInfo.groupId ) );
-        document.add( FLD_ARTIFACT_ID_KWD.toField( artifactInfo.artifactId ) );
-        document.add( FLD_VERSION_KWD.toField( artifactInfo.version ) );
-        document.add( FLD_DEPENDENCIES_KWD.toField( artifactInfo.dependencies ) );
+        document.add(FLD_GROUP_ID_KWD.toField(artifactInfo.groupId));
+        document.add(FLD_ARTIFACT_ID_KWD.toField(artifactInfo.artifactId));
+        document.add(FLD_VERSION_KWD.toField(artifactInfo.version));
         // V3
         document.add(FLD_GROUP_ID.toField(artifactInfo.groupId));
         document.add(FLD_ARTIFACT_ID.toField(artifactInfo.artifactId));
         document.add(FLD_VERSION.toField(artifactInfo.version));
-        if (!artifactInfo.dependencies.equalsIgnoreCase("")) {
+        if (null != artifactInfo.dependencies && !artifactInfo.dependencies.equalsIgnoreCase("")) {
             document.add(FLD_DEPENDENCIES.toField(artifactInfo.dependencies));
+            document.add(FLD_DEPENDENCIES_KWD.toField(artifactInfo.dependencies));
         }
     }
 
