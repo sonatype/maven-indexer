@@ -18,7 +18,6 @@ package org.apache.maven.index.creator;
  * specific language governing permissions and limitations
  * under the License.
  */
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.maven.index.*;
@@ -40,10 +39,13 @@ import java.util.List;
 import java.util.Scanner;
 
 /**
- * Created with IntelliJ IDEA. User: kperikov Date: 20.03.13 Time: 10:55 * how
- * to run it /tmp]$ java -jar indexer-cli-5.1.1-SNAPSHOT.jar -t full -r /test/prop/kcm/sonatype-work/nexus/storage/central -i ./central -c dependencies
- * java -jar indexer-cli-5.1.1c.jar -t full -r /home/kperikov/.m2/repository -i ../../../central -c dependencies
-
+ *
+ * @author kperikov
+ *
+ * Usage java -jar indexer-cli-5.1.1c.jar -t full -r
+ * /home/mysterion/.m2/repository -i /home/mysterion/test-central -c
+ * dependencies
+ *
  */
 @Component(role = IndexCreator.class, hint = DependenciesIndexCreator.ID)
 public class DependenciesIndexCreator extends AbstractIndexCreator
@@ -51,19 +53,19 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
 
     public static final String ID = "dependencies";
     public static final IndexerField FLD_DEPENDENCIES_KWD = new IndexerField(MAVEN.DEPENDENCIES, IndexerFieldVersion.V1,
-            "d", "Dependencies (as keyword)", Field.Store.YES, Field.Index.NOT_ANALYZED);
+            "d", "Dependencies (as keyword)", Field.Store.NO, Field.Index.NOT_ANALYZED);
     public static final IndexerField FLD_DEPENDENCIES = new IndexerField(MAVEN.DEPENDENCIES, IndexerFieldVersion.V3,
             "dependencies", "Dependencies", Field.Store.YES, Field.Index.ANALYZED);
-    public static final IndexerField FLD_GROUP_ID = new IndexerField(MAVEN.GROUP_ID, IndexerFieldVersion.V3,
-            "groupId", "GroupID", Field.Store.NO, Field.Index.ANALYZED);
     public static final IndexerField FLD_GROUP_ID_KWD = new IndexerField(MAVEN.GROUP_ID, IndexerFieldVersion.V1,
             "g", "GroupID (as keyword)", Field.Store.NO, Field.Index.NOT_ANALYZED);
+    public static final IndexerField FLD_GROUP_ID = new IndexerField(MAVEN.GROUP_ID, IndexerFieldVersion.V3,
+            "groupId", "GroupID", Field.Store.YES, Field.Index.ANALYZED);
     public static final IndexerField FLD_ARTIFACT_ID = new IndexerField(MAVEN.ARTIFACT_ID, IndexerFieldVersion.V3,
-            "artifactId", "ArtifactID", Field.Store.NO, Field.Index.ANALYZED);
+            "artifactId", "ArtifactID", Field.Store.YES, Field.Index.ANALYZED);
     public static final IndexerField FLD_ARTIFACT_ID_KWD = new IndexerField(MAVEN.ARTIFACT_ID, IndexerFieldVersion.V1,
             "a", "ArtifactID (as keyword)", Field.Store.NO, Field.Index.NOT_ANALYZED);
     public static final IndexerField FLD_VERSION = new IndexerField(MAVEN.VERSION, IndexerFieldVersion.V3,
-            "version", "Version", Field.Store.NO, Field.Index.ANALYZED);
+            "version", "Version", Field.Store.YES, Field.Index.ANALYZED);
     public static final IndexerField FLD_VERSION_KWD = new IndexerField(MAVEN.VERSION, IndexerFieldVersion.V1,
             "v", "Version (as keyword)", Field.Store.NO, Field.Index.NOT_ANALYZED);
     private Locator jl = new JavadocLocator();
@@ -128,8 +130,6 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
             try {
                 correctModel = mavenXpp3Reader.read(new InputStreamReader(new FileInputStream(artifactContext.getPom()), "UTF8"));
             } catch (XmlPullParserException e) {
-                System.out.println(artifactContext.getPom().toString());
-                e.printStackTrace();
                 correctModel = null;
             }
             if (correctModel != null) {
@@ -167,34 +167,15 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
             // special case, the POM _is_ the artifact
             artifact = pom;
         }
-
-//        if (artifact != null) {
-//            File signature = sigl.locate(artifact);
-//            ai.signatureExists = signature.exists() ? ArtifactAvailablility.PRESENT : ArtifactAvailablility.NOT_PRESENT;
-//            File sha1 = sha1l.locate(artifact);
-//            if (sha1.exists()) {
-//                try {
-//                    ai.sha1 = StringUtils.chomp(FileUtils.fileRead(sha1)).trim().split(" ")[0];
-//                } catch (IOException e) {
-//                    artifactContext.addError(e);
-//                }
-//            }
-//            ai.lastModified = artifact.lastModified();
-//            ai.size = artifact.length();
-//            ai.fextension = getExtension(artifact, artifactContext.getGav());
-//            if (ai.packaging == null) {
-//                ai.packaging = ai.fextension;
-//            }
-//        }
     }
 
     public void updateDocument(ArtifactInfo artifactInfo, Document document) {
         String info =
                 new StringBuilder().append(artifactInfo.packaging).append(ArtifactInfo.FS).append(
-                        Long.toString(artifactInfo.lastModified)).append(ArtifactInfo.FS).append(Long.toString(artifactInfo.size)).append(
-                        ArtifactInfo.FS).append(artifactInfo.sourcesExists.toString()).append(ArtifactInfo.FS).append(
-                        artifactInfo.javadocExists.toString()).append(ArtifactInfo.FS).append(artifactInfo.signatureExists.toString()).append(
-                        ArtifactInfo.FS).append(artifactInfo.fextension).toString();
+                Long.toString(artifactInfo.lastModified)).append(ArtifactInfo.FS).append(Long.toString(artifactInfo.size)).append(
+                ArtifactInfo.FS).append(artifactInfo.sourcesExists.toString()).append(ArtifactInfo.FS).append(
+                artifactInfo.javadocExists.toString()).append(ArtifactInfo.FS).append(artifactInfo.signatureExists.toString()).append(
+                ArtifactInfo.FS).append(artifactInfo.fextension).toString();
 
         // V1
         document.add(FLD_GROUP_ID_KWD.toField(artifactInfo.groupId));
@@ -213,7 +194,7 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
     public boolean updateArtifactInfo(Document document, ArtifactInfo artifactInfo) {
         boolean res = false;
         String uinfo = document.get(ArtifactInfo.UINFO);
-        artifactInfo.dependencies = document.get(FLD_DEPENDENCIES.toString());
+        artifactInfo.dependencies = document.get(FLD_DEPENDENCIES.getKey());
         if (uinfo != null) {
             String[] r = ArtifactInfo.FS_PATTERN.split(uinfo);
             artifactInfo.groupId = r[0];
