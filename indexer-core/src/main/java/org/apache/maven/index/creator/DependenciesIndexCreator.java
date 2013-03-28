@@ -42,6 +42,8 @@ import java.util.Scanner;
 /**
  * Created with IntelliJ IDEA. User: kperikov Date: 20.03.13 Time: 10:55 * how
  * to run it /tmp]$ java -jar indexer-cli-5.1.1-SNAPSHOT.jar -t full -r /test/prop/kcm/sonatype-work/nexus/storage/central -i ./central -c dependencies
+ * java -jar indexer-cli-5.1.1c.jar -t full -r /home/kperikov/.m2/repository -i ../../../central -c dependencies
+
  */
 @Component(role = IndexCreator.class, hint = DependenciesIndexCreator.ID)
 public class DependenciesIndexCreator extends AbstractIndexCreator
@@ -211,6 +213,7 @@ public class DependenciesIndexCreator extends AbstractIndexCreator
     public boolean updateArtifactInfo(Document document, ArtifactInfo artifactInfo) {
         boolean res = false;
         String uinfo = document.get(ArtifactInfo.UINFO);
+        artifactInfo.dependencies = document.get(FLD_DEPENDENCIES.toString());
         if (uinfo != null) {
             String[] r = ArtifactInfo.FS_PATTERN.split(uinfo);
             artifactInfo.groupId = r[0];

@@ -116,7 +116,7 @@ public class IndexUtils
         boolean res = false;
 
         ArtifactInfo artifactInfo = new ArtifactInfo();
-
+        
         for ( IndexCreator ic : context.getIndexCreators() )
         {
             res |= ic.updateArtifactInfo( doc, artifactInfo );
