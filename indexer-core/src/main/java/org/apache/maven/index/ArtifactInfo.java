@@ -32,6 +32,7 @@ import org.apache.maven.index.creator.JarFileContentsIndexCreator;
 import org.apache.maven.index.creator.MavenPluginArtifactInfoIndexCreator;
 import org.apache.maven.index.creator.MinimalArtifactInfoIndexCreator;
 import org.apache.maven.index.creator.OsgiArtifactIndexCreator;
+import org.apache.maven.model.Dependency;
 import org.codehaus.plexus.util.StringUtils;
 import org.sonatype.aether.util.version.GenericVersionScheme;
 import org.sonatype.aether.version.InvalidVersionSpecificationException;
@@ -211,6 +212,8 @@ public class ArtifactInfo
     public String remoteUrl;
 
     public String context;
+
+    public String dependencies;
 
     /**
      * Plugin goal prefix (only if packaging is "maven-plugin")

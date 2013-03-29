@@ -63,4 +63,6 @@ public interface MAVEN
 
     // PLUGIN_GOALS: MavenPlugin Artifact Plugin Goals (list of strings)
     Field PLUGIN_GOALS = new Field( null, MAVEN_NAMESPACE, "pluginGoals", "Plugin Goals" );
+
+    Field DEPENDENCIES = new Field (null, MAVEN_NAMESPACE, "dependencies", "List of dependencies");
 }

@@ -52,9 +52,10 @@ under the License.
   </contributors>
 
   <scm>
-    <connection>scm:svn:http://svn.apache.org/repos/asf/maven/indexer/trunk</connection>
-    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/maven/indexer/trunk</developerConnection>
-    <url>http://svn.apache.org/repos/asf/maven/indexer/trunk</url>
+     <connection>scm:git:git://github.com/sonatype/maven-indexer.git</connection>
+     <developerConnection>scm:git:git@github.com:sonatype/maven-indexer.git</developerConnection>
+     <url>https://github.com/sonatype/maven-indexer</url>
+     <tag>HEAD</tag>
   </scm>
 
   <issueManagement>
@@ -82,10 +83,14 @@ under the License.
   </properties>
 
   <distributionManagement>
-    <site>
-      <id>apache.website</id>
-      <url>${distributionSiteUrl}</url>
-    </site>
+    <repository>
+      <id>forge-releases</id>
+      <url>https://repository.sonatype.org/content/repositories/releases</url>
+    </repository>
+    <snapshotRepository>
+      <id>forge-snapshots</id>
+      <url>https://repository.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
   </distributionManagement>
 
   <dependencyManagement>
@@ -164,6 +169,18 @@ under the License.
 
   <build>
     <plugins>
+      <plugin>
+          <groupId>org.sonatype.plugins</groupId>
+          <artifactId>nexus-staging-maven-plugin</artifactId>
+          <version>1.2</version>
+          <extensions>true</extensions>
+          <configuration>
+              <nexusUrl>https://repository.sonatype.org/</nexusUrl>
+              <serverId>sonatype-grid</serverId>
+              <skipStaging>true</skipStaging> <!-- For now, we want deferred deploy only -->
+          </configuration>
+      </plugin>
+
       <plugin>
         <groupId>org.codehaus.plexus</groupId>
         <artifactId>plexus-component-metadata</artifactId>
