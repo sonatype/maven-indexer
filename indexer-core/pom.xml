@@ -82,8 +82,8 @@ under the License.
 
     <!-- Plexus (as provided since you have to provide it when embedding MI) -->
     <dependency>
-      <groupId>org.sonatype.sisu</groupId>
-      <artifactId>sisu-inject-plexus</artifactId>
+      <groupId>org.eclipse.sisu</groupId>
+      <artifactId>org.eclipse.sisu.plexus</artifactId>
     </dependency>
 
     <!-- Wagon, as optional for those want to use ResourceFetcher backed by Wagons -->
@@ -177,6 +177,11 @@ under the License.
     <dependency>
       <groupId>org.jmock</groupId>
       <artifactId>jmock</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.sonatype.sisu</groupId>
+      <artifactId>sisu-guice</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

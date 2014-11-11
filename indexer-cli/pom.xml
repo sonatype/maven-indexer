@@ -51,8 +51,13 @@ under the License.
 
     <!-- Plexus (as compile since it has to end up in CLI) -->
     <dependency>
+      <groupId>org.eclipse.sisu</groupId>
+      <artifactId>org.eclipse.sisu.plexus</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
       <groupId>org.sonatype.sisu</groupId>
-      <artifactId>sisu-inject-plexus</artifactId>
+      <artifactId>sisu-guice</artifactId>
       <scope>compile</scope>
     </dependency>
 

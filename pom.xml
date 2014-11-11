@@ -73,7 +73,8 @@ under the License.
 
     <siteUrl>http://maven.apache.org/maven-indexer-archives/maven-indexer-${project.version}</siteUrl>
 
-    <sisu-inject-plexus.version>2.2.3</sisu-inject-plexus.version>
+    <sisu.version>0.2.1</sisu.version>
+    <guice.version>3.2.4</guice.version>
     <lucene.version>3.6.2</lucene.version>
     <maven.version>3.0.4</maven.version>
     <aether.version>1.13.1</aether.version>
@@ -134,9 +135,16 @@ under the License.
       </dependency>
 
       <dependency>
+        <groupId>org.eclipse.sisu</groupId>
+        <artifactId>org.eclipse.sisu.plexus</artifactId>
+        <version>${sisu.version}</version>
+        <scope>provided</scope>
+      </dependency>
+
+      <dependency>
         <groupId>org.sonatype.sisu</groupId>
-        <artifactId>sisu-inject-plexus</artifactId>
-        <version>${sisu-inject-plexus.version}</version>
+        <artifactId>sisu-guice</artifactId>
+        <version>${guice.version}</version>
         <scope>provided</scope>
       </dependency>
 
