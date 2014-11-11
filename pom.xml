@@ -76,7 +76,7 @@ under the License.
     <sisu-inject-plexus.version>2.2.3</sisu-inject-plexus.version>
     <lucene.version>3.6.2</lucene.version>
     <maven.version>3.0.4</maven.version>
-    <aether.version>1.13.1</aether.version>
+    <aether.version>1.0.0.v20140518</aether.version>
     <archetype.version>2.2</archetype.version>
     <wagon.version>2.3</wagon.version>
     <truezip.version>7.6.6</truezip.version>
