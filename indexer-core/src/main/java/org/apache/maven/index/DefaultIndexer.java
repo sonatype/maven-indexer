@@ -19,6 +19,9 @@ package org.apache.maven.index;
  * under the License.
  */
 
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -28,8 +31,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-
-import org.apache.lucene.queryParser.ParseException;
+import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.Query;
 import org.apache.maven.index.context.ContextMemberProvider;
 import org.apache.maven.index.context.DefaultIndexingContext;
@@ -40,9 +42,6 @@ import org.apache.maven.index.context.MergedIndexingContext;
 import org.apache.maven.index.expr.SearchExpression;
 import org.apache.maven.index.expr.SourcedSearchExpression;
 import org.apache.maven.index.util.IndexCreatorSorter;
-import org.codehaus.plexus.component.annotations.Component;
-import org.codehaus.plexus.component.annotations.Requirement;
-import org.codehaus.plexus.logging.AbstractLogEnabled;
 import org.codehaus.plexus.util.IOUtil;
 
 /**
@@ -50,19 +49,28 @@ import org.codehaus.plexus.util.IOUtil;
  * 
  * @author Tamas Cservenak
  */
-@Component( role = Indexer.class )
+@Singleton
+@Named
 public class DefaultIndexer
-    extends AbstractLogEnabled
     implements Indexer
 {
-    @Requirement
-    private SearchEngine searcher;
 
-    @Requirement
-    private IndexerEngine indexerEngine;
+    private final SearchEngine searcher;
 
-    @Requirement
-    private QueryCreator queryCreator;
+    private final IndexerEngine indexerEngine;
+
+    private final QueryCreator queryCreator;
+
+
+    @Inject
+    public DefaultIndexer( SearchEngine searcher,
+                           IndexerEngine indexerEngine,
+                           QueryCreator queryCreator )
+    {
+        this.searcher = searcher;
+        this.indexerEngine = indexerEngine;
+        this.queryCreator = queryCreator;
+    }
 
     // ----------------------------------------------------------------------------
     // Contexts

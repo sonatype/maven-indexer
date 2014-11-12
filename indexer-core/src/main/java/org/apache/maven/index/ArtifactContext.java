@@ -21,11 +21,7 @@ package org.apache.maven.index;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,8 +35,7 @@ import org.apache.maven.index.context.IndexingContext;
 import org.apache.maven.index.util.zip.ZipFacade;
 import org.apache.maven.index.util.zip.ZipHandle;
 import org.apache.maven.model.Model;
-import org.codehaus.plexus.util.xml.Xpp3Dom;
-import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 /**
@@ -89,18 +84,23 @@ public class ArtifactContext
     public Model getPomModel()
     {
         // First check for local pom file
-        if ( getPom() != null && getPom().exists() )
+        if ( getPom() != null && getPom().isFile() )
         {
             try
             {
-                return new ModelReader().readModel( new FileInputStream( getPom() ) );
+                return new MavenXpp3Reader().read( new FileInputStream( getPom() ), false );
             }
-            catch ( FileNotFoundException e )
+            catch ( IOException e )
             {
+                e.printStackTrace();
+            }
+            catch ( XmlPullParserException e )
+            {
+                e.printStackTrace();
             }
         }
         // Otherwise, check for pom contained in maven generated artifact
-        else if ( getArtifact() != null )
+        else if ( getArtifact() != null && getArtifact().isFile() )
         {
             ZipHandle handle = null;
 
@@ -113,11 +113,16 @@ public class ArtifactContext
 
                 if ( handle.hasEntry( embeddedPomPath ) )
                 {
-                    return new ModelReader().readModel( handle.getEntryContent( embeddedPomPath ) );
+                    return new MavenXpp3Reader().read( handle.getEntryContent( embeddedPomPath ), false );
                 }
             }
             catch ( IOException e )
             {
+                e.printStackTrace();
+            }
+            catch ( XmlPullParserException e )
+            {
+                e.printStackTrace();
             }
             finally
             {
@@ -196,74 +201,5 @@ public class ArtifactContext
         }
 
         return doc;
-    }
-
-    public static class ModelReader
-    {
-        public Model readModel( InputStream pom )
-        {
-            if ( pom == null )
-            {
-                return null;
-            }
-
-            Model model = new Model();
-
-            Xpp3Dom dom = readPomInputStream( pom );
-
-            if ( dom == null )
-            {
-                return null;
-            }
-
-            if ( dom.getChild( "packaging" ) != null )
-            {
-                model.setPackaging( dom.getChild( "packaging" ).getValue() );
-            }
-            // Special case, packaging should be null instead of default .jar if not set in pom
-            else
-            {
-                model.setPackaging( null );
-            }
-
-            if ( dom.getChild( "name" ) != null )
-            {
-                model.setName( dom.getChild( "name" ).getValue() );
-            }
-
-            if ( dom.getChild( "description" ) != null )
-            {
-                model.setDescription( dom.getChild( "description" ).getValue() );
-            }
-
-            return model;
-        }
-
-        private Xpp3Dom readPomInputStream( InputStream is )
-        {
-            Reader r = new InputStreamReader( is );
-            try
-            {
-                return Xpp3DomBuilder.build( r );
-            }
-            catch ( XmlPullParserException e )
-            {
-            }
-            catch ( IOException e )
-            {
-            }
-            finally
-            {
-                try
-                {
-                    r.close();
-                }
-                catch ( IOException e )
-                {
-                }
-            }
-
-            return null;
-        }
     }
 }

@@ -19,6 +19,8 @@ package org.apache.maven.index;
  * under the License.
  */
 
+import javax.inject.Named;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,25 +28,23 @@ import java.util.Set;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Fieldable;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.maven.index.context.IndexingContext;
 import org.apache.maven.index.creator.MinimalArtifactInfoIndexCreator;
-import org.codehaus.plexus.component.annotations.Component;
-import org.codehaus.plexus.logging.AbstractLogEnabled;
 
 /**
  * A default {@link IndexerEngine} implementation.
  * 
  * @author Tamas Cservenak
  */
-@Component( role = IndexerEngine.class )
+@Singleton
+@Named
 public class DefaultIndexerEngine
-    extends AbstractLogEnabled
     implements IndexerEngine
 {
 
@@ -139,8 +139,8 @@ public class DefaultIndexerEngine
 
         for ( Object o : d.getFields() )
         {
-            Fieldable f = (Fieldable) o;
-            if ( f.isStored() )
+            IndexableField f = (IndexableField) o;
+            if ( f.fieldType().stored())
             {
                 result.put( f.name(), f.stringValue() );
             }
@@ -190,9 +190,9 @@ public class DefaultIndexerEngine
         }
 
         Set<String> allGroups = context.getAllGroups();
-        if ( !allGroups.contains( ac.getArtifactInfo().groupId ) )
+        if ( !allGroups.contains( ac.getArtifactInfo().getGroupId() ) )
         {
-            allGroups.add( ac.getArtifactInfo().groupId );
+            allGroups.add( ac.getArtifactInfo().getGroupId() );
             context.setAllGroups( allGroups );
         }
     }

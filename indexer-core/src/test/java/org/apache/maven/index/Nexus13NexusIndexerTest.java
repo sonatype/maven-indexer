@@ -29,14 +29,19 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.maven.index.context.IndexingContext;
 import org.apache.maven.index.packer.DefaultIndexPacker;
+import org.apache.maven.index.packer.IndexPacker;
+import org.apache.maven.index.packer.IndexPackingRequest;
 import org.apache.maven.index.search.grouping.GAGrouping;
 import org.apache.maven.index.updater.DefaultIndexUpdater;
+import org.apache.maven.index.updater.IndexUpdateRequest;
+import org.apache.maven.index.updater.IndexUpdater;
 
 /** http://issues.sonatype.org/browse/NEXUS-13 */
 public class Nexus13NexusIndexerTest
@@ -98,17 +103,30 @@ public class Nexus13NexusIndexerTest
         assertEquals( r.toString(), 1, r.size() );
 
         ArtifactInfo ai = r.iterator().next();
-        assertEquals( "cisco.infra.dft", ai.groupId );
-        assertEquals( "archetype.sdf", ai.artifactId );
-        assertEquals( "1.0-SNAPSHOT", ai.version );
+        assertEquals( "cisco.infra.dft", ai.getGroupId() );
+        assertEquals( "archetype.sdf", ai.getArtifactId() );
+        assertEquals( "1.0-SNAPSHOT", ai.getVersion() );
     }
 
     public void testIndexTimestamp()
         throws Exception
     {
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        final File targetDir = File.createTempFile( "testIndexTimestamp", "ut-tmp" );
+        targetDir.delete();
+        targetDir.mkdirs();
 
-        DefaultIndexPacker.packIndexArchive( context, os );
+        final IndexPacker indexPacker = lookup( IndexPacker.class );
+        final IndexSearcher indexSearcher = context.acquireIndexSearcher();
+        try
+        {
+            final IndexPackingRequest request =
+                new IndexPackingRequest( context, indexSearcher.getIndexReader(), targetDir );
+            indexPacker.packIndex( request );
+        }
+        finally
+        {
+            context.releaseIndexSearcher( indexSearcher );
+        }
 
         Thread.sleep( 1000L );
 
@@ -117,10 +135,9 @@ public class Nexus13NexusIndexerTest
         IndexingContext newContext =
             nexusIndexer.addIndexingContext( "test-new", "nexus-13", null, indexDir, null, null, DEFAULT_CREATORS );
 
-        Directory newIndexDir = new RAMDirectory();
-
-        DefaultIndexUpdater.unpackIndexArchive( new ByteArrayInputStream( os.toByteArray() ), newIndexDir, newContext );
-        newContext.replace( newIndexDir );
+        final IndexUpdater indexUpdater = lookup( IndexUpdater.class );
+        final IndexUpdateRequest updateRequest = new IndexUpdateRequest( newContext, new DefaultIndexUpdater.FileFetcher( targetDir ) );
+        indexUpdater.fetchAndUpdateIndex( updateRequest );
 
         assertEquals( 0, newContext.getTimestamp().getTime() - context.getTimestamp().getTime() );
 
@@ -141,13 +158,13 @@ public class Nexus13NexusIndexerTest
 
         ArtifactInfo ai = list.get( 0 );
 
-        assertEquals( "1.0-SNAPSHOT", ai.version );
+        assertEquals( "1.0-SNAPSHOT", ai.getVersion() );
 
         ai = list.get( 1 );
 
-        assertEquals( "1.0-SNAPSHOT", ai.version );
+        assertEquals( "1.0-SNAPSHOT", ai.getVersion() );
 
-        assertEquals( "nexus-13", ai.repository );
+        assertEquals( "nexus-13", ai.getRepository() );
 
         newContext.close( true );
     }
@@ -176,11 +193,11 @@ public class Nexus13NexusIndexerTest
 
         ArtifactInfo ai = list.get( 0 );
 
-        assertEquals( "1.0-SNAPSHOT", ai.version );
+        assertEquals( "1.0-SNAPSHOT", ai.getVersion() );
 
         ai = list.get( 1 );
 
-        assertEquals( "nexus-13", ai.repository );
+        assertEquals( "nexus-13", ai.getRepository() );
 
     }
 
@@ -209,7 +226,7 @@ public class Nexus13NexusIndexerTest
 
         ArtifactInfo ai = list.get( 0 );
 
-        assertEquals( "1.0-SNAPSHOT", ai.version );
+        assertEquals( "1.0-SNAPSHOT", ai.getVersion() );
     }
 
     public void testSearchGroupedProblematicNames()
@@ -246,11 +263,11 @@ public class Nexus13NexusIndexerTest
 
         assertNotNull( ai );
 
-        assertEquals( "cisco.infra.dft", ai.groupId );
+        assertEquals( "cisco.infra.dft", ai.getGroupId() );
 
-        assertEquals( "dma.plugin.utils", ai.artifactId );
+        assertEquals( "dma.plugin.utils", ai.getArtifactId() );
 
-        assertEquals( "1.0-SNAPSHOT", ai.version );
+        assertEquals( "1.0-SNAPSHOT", ai.getVersion() );
 
         // Using a file
 
@@ -266,10 +283,10 @@ public class Nexus13NexusIndexerTest
 
         assertNotNull( ai );
 
-        assertEquals( "cisco.infra.dft", ai.groupId );
+        assertEquals( "cisco.infra.dft", ai.getGroupId() );
 
-        assertEquals( "maven-dma-mgmt-plugin", ai.artifactId );
+        assertEquals( "maven-dma-mgmt-plugin", ai.getArtifactId() );
 
-        assertEquals( "1.0-SNAPSHOT", ai.version );
+        assertEquals( "1.0-SNAPSHOT", ai.getVersion() );
     }
 }

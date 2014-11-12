@@ -19,6 +19,9 @@ package org.apache.maven.index;
  * under the License.
  */
 
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
 import java.io.File;
 
 import org.apache.maven.index.artifact.ArtifactPackagingMapper;
@@ -29,8 +32,6 @@ import org.apache.maven.index.locator.GavHelpedLocator;
 import org.apache.maven.index.locator.Locator;
 import org.apache.maven.index.locator.MetadataLocator;
 import org.apache.maven.index.locator.PomLocator;
-import org.codehaus.plexus.component.annotations.Component;
-import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.util.StringUtils;
 
 /**
@@ -39,16 +40,24 @@ import org.codehaus.plexus.util.StringUtils;
  * @author Tamas Cservenak
  * @author Eugene Kuleshov
  */
-@Component( role = ArtifactContextProducer.class )
+@Singleton
+@Named
 public class DefaultArtifactContextProducer
     implements ArtifactContextProducer
 {
-    @Requirement
-    private ArtifactPackagingMapper mapper;
+
+    private final ArtifactPackagingMapper mapper;
 
     private GavHelpedLocator pl = new PomLocator();
 
     private Locator ml = new MetadataLocator();
+
+
+    @Inject
+    public DefaultArtifactContextProducer( ArtifactPackagingMapper mapper )
+    {
+        this.mapper = mapper;
+    }
 
     /**
      * Get ArtifactContext for given pom or artifact (jar, war, etc). A file can be
@@ -108,16 +117,16 @@ public class DefaultArtifactContextProducer
 
         String classifier = gav.getClassifier();
 
-        ArtifactInfo ai = new ArtifactInfo( context.getRepositoryId(), groupId, artifactId, version, classifier );
+        ArtifactInfo ai = new ArtifactInfo( context.getRepositoryId(), groupId, artifactId, version, classifier, gav.getExtension() );
 
         // store extension if classifier is not empty
-        if ( !StringUtils.isEmpty( ai.classifier ) )
+        if ( !StringUtils.isEmpty( ai.getClassifier() ) )
         {
-            ai.packaging = gav.getExtension();
+            ai.setPackaging( gav.getExtension() );
         }
 
-        ai.fname = file.getName();
-        ai.fextension = gav.getExtension();
+        ai.setFileName( file.getName() );
+        ai.setFileExtension( gav.getExtension() );
 
         File metadata = ml.locate( pom );
 

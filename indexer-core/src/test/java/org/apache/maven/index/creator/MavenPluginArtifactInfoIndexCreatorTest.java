@@ -26,14 +26,13 @@ import java.util.List;
 import org.apache.maven.index.ArtifactContext;
 import org.apache.maven.index.ArtifactInfo;
 import org.apache.maven.index.context.IndexCreator;
-import org.apache.maven.index.creator.MavenPluginArtifactInfoIndexCreator;
-import org.codehaus.plexus.PlexusTestCase;
+import org.apache.maven.index.AbstractTestSupport;
 
 /**
  * @author juven
  */
 public class MavenPluginArtifactInfoIndexCreatorTest
-    extends PlexusTestCase
+    extends AbstractTestSupport
 {
     protected IndexCreator indexCreator;
 
@@ -58,16 +57,16 @@ public class MavenPluginArtifactInfoIndexCreatorTest
                 "src/test/repo-creator/org/apache/maven/plugins/maven-dependency-plugin/2.0/maven-dependency-plugin-2.0.pom" );
 
         ArtifactInfo artifactInfo =
-            new ArtifactInfo( "test", "org.apache.maven.plugins", "maven-dependency-plugin", "2.0", null );
+            new ArtifactInfo( "test", "org.apache.maven.plugins", "maven-dependency-plugin", "2.0", null, "jar" );
 
-        artifactInfo.packaging = "maven-plugin";
-        artifactInfo.fextension = "jar";
+        artifactInfo.setPackaging( "maven-plugin" );
+        artifactInfo.setFileExtension( "jar" );
 
         ArtifactContext artifactContext = new ArtifactContext( pom, artifact, null, artifactInfo, null );
 
         indexCreator.populateArtifactInfo( artifactContext );
 
-        assertEquals( "dependency", artifactContext.getArtifactInfo().prefix );
+        assertEquals( "dependency", artifactContext.getArtifactInfo().getPrefix() );
 
         List<String> goals = new ArrayList<String>( 16 );
         goals.add( "analyze-dep-mgt" );
@@ -87,7 +86,7 @@ public class MavenPluginArtifactInfoIndexCreatorTest
         goals.add( "tree" );
         goals.add( "unpack-dependencies" );
 
-        assertEquals( goals, artifactContext.getArtifactInfo().goals );
+        assertEquals( goals, artifactContext.getArtifactInfo().getGoals() );
 
     }
 }

@@ -31,8 +31,8 @@ under the License.
 
   <custom>
     <fluidoSkin>
-      <topBarEnabled>true</topBarEnabled>
-      <sideBarEnabled>false</sideBarEnabled>
+      <topBarEnabled>false</topBarEnabled>
+      <sideBarEnabled>true</sideBarEnabled>
       <googleSearch>
         <sitesearch>${project.url}</sitesearch>
       </googleSearch>
@@ -53,6 +53,16 @@ under the License.
     <breadcrumbs>
       <item name="Maven Indexer" href="http://maven.apache.org/maven-indexer/index.html" />
     </breadcrumbs>
+
+    <menu name="Overview">
+      <item name="Introduction" href="index.html"/>
+      <item name="JavaDocs" href="apidocs/index.html"/>
+      <item name="FAQ" href="faq.html"/>
+      <item name="stackoverflow" href="http://stackoverflow.com/questions/tagged/maven-indexer"/>
+      <!-- According to http://jira.codehaus.org/browse/MNGSITE-152 -->
+      <item name="License" href="http://www.apache.org/licenses/"/>
+      <item name="Download" href="download.html"/>
+    </menu>
 
     <menu ref="modules" inherit="bottom" />
     <menu ref="reports" inherit="bottom" />

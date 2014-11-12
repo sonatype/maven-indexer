@@ -19,8 +19,6 @@ package org.apache.maven.index;
  * under the License.
  */
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,19 +29,19 @@ import java.util.Set;
 
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.FilteredQuery;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryWrapperFilter;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.maven.index.ArtifactInfo;
-import org.apache.maven.index.FlatSearchRequest;
-import org.apache.maven.index.FlatSearchResponse;
-import org.apache.maven.index.NexusIndexer;
 import org.apache.maven.index.context.IndexingContext;
-import org.apache.maven.index.packer.DefaultIndexPacker;
+import org.apache.maven.index.packer.IndexPacker;
+import org.apache.maven.index.packer.IndexPackingRequest;
 import org.apache.maven.index.updater.DefaultIndexUpdater;
+import org.apache.maven.index.updater.IndexUpdateRequest;
+import org.apache.maven.index.updater.IndexUpdater;
 
 public class DefaultIndexNexusIndexerTest
     extends MinimalIndexNexusIndexerTest
@@ -86,11 +84,11 @@ public class DefaultIndexNexusIndexerTest
 
         ArtifactInfo ai = r.iterator().next();
 
-        assertEquals( "org.apache.maven.plugins", ai.groupId );
-        assertEquals( "maven-core-it-plugin", ai.artifactId );
-        assertEquals( "core-it", ai.prefix );
+        assertEquals( "org.apache.maven.plugins", ai.getGroupId() );
+        assertEquals( "maven-core-it-plugin", ai.getArtifactId() );
+        assertEquals( "core-it", ai.getPrefix() );
 
-        List<String> goals = ai.goals;
+        List<String> goals = ai.getGoals();
         assertEquals( 14, goals.size() );
         assertEquals( "catch", goals.get( 0 ) );
         assertEquals( "fork", goals.get( 1 ) );
@@ -135,36 +133,49 @@ public class DefaultIndexNexusIndexerTest
         Iterator<ArtifactInfo> it = r.iterator();
         {
             ArtifactInfo ai = it.next();
-            assertEquals( "org.apache.directory.server", ai.groupId );
-            assertEquals( "apacheds-schema-archetype", ai.artifactId );
-            assertEquals( "1.0.2", ai.version );
+            assertEquals( "org.apache.directory.server", ai.getGroupId() );
+            assertEquals( "apacheds-schema-archetype", ai.getArtifactId() );
+            assertEquals( "1.0.2", ai.getVersion() );
         }
         {
             ArtifactInfo ai = it.next();
-            assertEquals( "org.apache.servicemix.tooling", ai.groupId );
-            assertEquals( "servicemix-service-engine", ai.artifactId );
-            assertEquals( "3.1", ai.version );
+            assertEquals( "org.apache.servicemix.tooling", ai.getGroupId() );
+            assertEquals( "servicemix-service-engine", ai.getArtifactId() );
+            assertEquals( "3.1", ai.getVersion() );
         }
         {
             ArtifactInfo ai = it.next();
-            assertEquals( "org.terracotta.maven.archetypes", ai.groupId );
-            assertEquals( "pojo-archetype", ai.artifactId );
-            assertEquals( "1.0.3", ai.version );
+            assertEquals( "org.terracotta.maven.archetypes", ai.getGroupId() );
+            assertEquals( "pojo-archetype", ai.getArtifactId() );
+            assertEquals( "1.0.3", ai.getVersion() );
         }
         {
             ArtifactInfo ai = it.next();
-            assertEquals( "proptest", ai.groupId );
-            assertEquals( "proptest-archetype", ai.artifactId );
-            assertEquals( "1.0", ai.version );
+            assertEquals( "proptest", ai.getGroupId() );
+            assertEquals( "proptest-archetype", ai.getArtifactId() );
+            assertEquals( "1.0", ai.getVersion() );
         }
     }
 
     public void testIndexTimestamp()
         throws Exception
     {
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        final File targetDir = File.createTempFile( "testIndexTimestamp", "ut-tmp" );
+        targetDir.delete();
+        targetDir.mkdirs();
 
-        DefaultIndexPacker.packIndexArchive( context, os );
+        final IndexPacker indexPacker = lookup( IndexPacker.class );
+        final IndexSearcher indexSearcher = context.acquireIndexSearcher();
+        try
+        {
+            final IndexPackingRequest request =
+                new IndexPackingRequest( context, indexSearcher.getIndexReader(), targetDir );
+            indexPacker.packIndex( request );
+        }
+        finally
+        {
+            context.releaseIndexSearcher( indexSearcher );
+        }
 
         Thread.sleep( 1000L );
 
@@ -172,10 +183,11 @@ public class DefaultIndexNexusIndexerTest
 
         Directory newIndexDir = FSDirectory.open( newIndex );
 
-        DefaultIndexUpdater.unpackIndexArchive( new ByteArrayInputStream( os.toByteArray() ), newIndexDir, context );
-
         IndexingContext newContext =
             nexusIndexer.addIndexingContext( "test-new", "test", null, newIndexDir, null, null, DEFAULT_CREATORS );
+
+        final IndexUpdater indexUpdater = lookup( IndexUpdater.class );
+        indexUpdater.fetchAndUpdateIndex( new IndexUpdateRequest( newContext, new DefaultIndexUpdater.FileFetcher( targetDir ) ) );
 
         assertEquals( context.getTimestamp().getTime(), newContext.getTimestamp().getTime() );
 
@@ -189,6 +201,8 @@ public class DefaultIndexNexusIndexerTest
         FlatSearchResponse response = nexusIndexer.searchFlat( request );
         Collection<ArtifactInfo> r = response.getResults();
 
+        System.out.println(r);
+
         assertEquals( 2, r.size() );
 
         List<ArtifactInfo> list = new ArrayList<ArtifactInfo>( r );
@@ -197,13 +211,13 @@ public class DefaultIndexNexusIndexerTest
 
         ArtifactInfo ai = list.get( 0 );
 
-        assertEquals( "1.6.1", ai.version );
+        assertEquals( "1.6.1", ai.getVersion() );
 
         ai = list.get( 1 );
 
-        assertEquals( "1.5", ai.version );
+        assertEquals( "1.5", ai.getVersion() );
 
-        assertEquals( "test", ai.repository );
+        assertEquals( "test", ai.getRepository() );
 
         Date timestamp = newContext.getTimestamp();
 
@@ -211,10 +225,10 @@ public class DefaultIndexNexusIndexerTest
 
         newIndexDir = FSDirectory.open( newIndex );
 
-        DefaultIndexUpdater.unpackIndexArchive( new ByteArrayInputStream( os.toByteArray() ), newIndexDir, context );
-
         newContext =
             nexusIndexer.addIndexingContext( "test-new", "test", null, newIndexDir, null, null, DEFAULT_CREATORS );
+
+        indexUpdater.fetchAndUpdateIndex( new IndexUpdateRequest( newContext, new DefaultIndexUpdater.FileFetcher( targetDir ) ) );
 
         assertEquals( timestamp, newContext.getTimestamp() );
 
@@ -262,10 +276,10 @@ public class DefaultIndexNexusIndexerTest
 
         ArtifactInfo ai = r.iterator().next();
 
-        assertEquals( "brokenjar", ai.groupId );
-        assertEquals( "brokenjar", ai.artifactId );
-        assertEquals( "1.0", ai.version );
-        assertEquals( null, ai.classNames );
+        assertEquals( "brokenjar", ai.getGroupId() );
+        assertEquals( "brokenjar", ai.getArtifactId() );
+        assertEquals( "1.0", ai.getVersion() );
+        assertEquals( null, ai.getClassNames() );
     }
 
     public void testMissingPom()
@@ -283,11 +297,11 @@ public class DefaultIndexNexusIndexerTest
 
         ArtifactInfo ai = r.iterator().next();
 
-        assertEquals( "missingpom", ai.groupId );
-        assertEquals( "missingpom", ai.artifactId );
-        assertEquals( "1.0", ai.version );
+        assertEquals( "missingpom", ai.getGroupId() );
+        assertEquals( "missingpom", ai.getArtifactId() );
+        assertEquals( "1.0", ai.getVersion() );
         // See Nexus 2318. It should be null for a jar without classes
-        assertNull( ai.classNames );
+        assertNull( ai.getClassNames() );
     }
 
 }

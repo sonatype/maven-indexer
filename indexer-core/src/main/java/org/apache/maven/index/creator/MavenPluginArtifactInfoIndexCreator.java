@@ -19,6 +19,8 @@ package org.apache.maven.index.creator;
  * under the License.
  */
 
+import javax.inject.Named;
+import javax.inject.Singleton;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -36,10 +38,8 @@ import org.apache.maven.index.ArtifactInfo;
 import org.apache.maven.index.IndexerField;
 import org.apache.maven.index.IndexerFieldVersion;
 import org.apache.maven.index.MAVEN;
-import org.apache.maven.index.context.IndexCreator;
 import org.apache.maven.index.util.zip.ZipFacade;
 import org.apache.maven.index.util.zip.ZipHandle;
-import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.configuration.PlexusConfiguration;
 import org.codehaus.plexus.configuration.xml.XmlPlexusConfiguration;
 import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
@@ -51,7 +51,8 @@ import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
  * 
  * @author cstamas
  */
-@Component( role = IndexCreator.class, hint = MavenPluginArtifactInfoIndexCreator.ID )
+@Singleton
+@Named (MavenPluginArtifactInfoIndexCreator.ID)
 public class MavenPluginArtifactInfoIndexCreator
     extends AbstractIndexCreator
 {
@@ -77,7 +78,7 @@ public class MavenPluginArtifactInfoIndexCreator
         ArtifactInfo ai = ac.getArtifactInfo();
 
         // we need the file to perform these checks, and those may be only JARs
-        if ( artifact != null && MAVEN_PLUGIN_PACKAGING.equals( ai.packaging ) && artifact.getName().endsWith( ".jar" ) )
+        if ( artifact != null && MAVEN_PLUGIN_PACKAGING.equals( ai.getPackaging() ) && artifact.getName().endsWith( ".jar" ) )
         {
             // TODO: recheck, is the following true? "Maven plugins and Maven Archetypes can be only JARs?"
 
@@ -106,15 +107,15 @@ public class MavenPluginArtifactInfoIndexCreator
                     PlexusConfiguration plexusConfig =
                         new XmlPlexusConfiguration( Xpp3DomBuilder.build( new InputStreamReader( is ) ) );
 
-                    ai.prefix = plexusConfig.getChild( "goalPrefix" ).getValue();
+                    ai.setPrefix( plexusConfig.getChild( "goalPrefix" ).getValue() );
 
-                    ai.goals = new ArrayList<String>();
+                    ai.setGoals( new ArrayList<String>() );
 
                     PlexusConfiguration[] mojoConfigs = plexusConfig.getChild( "mojos" ).getChildren( "mojo" );
 
                     for ( PlexusConfiguration mojoConfig : mojoConfigs )
                     {
-                        ai.goals.add( mojoConfig.getChild( "goal" ).getValue() );
+                        ai.getGoals().add( mojoConfig.getChild( "goal" ).getValue() );
                     }
                 }
                 finally
@@ -150,14 +151,14 @@ public class MavenPluginArtifactInfoIndexCreator
 
     public void updateDocument( ArtifactInfo ai, Document doc )
     {
-        if ( ai.prefix != null )
+        if ( ai.getPrefix() != null )
         {
-            doc.add( FLD_PLUGIN_PREFIX.toField( ai.prefix ) );
+            doc.add( FLD_PLUGIN_PREFIX.toField( ai.getPrefix() ) );
         }
 
-        if ( ai.goals != null )
+        if ( ai.getGoals() != null )
         {
-            doc.add( FLD_PLUGIN_GOALS.toField( ArtifactInfo.lst2str( ai.goals ) ) );
+            doc.add( FLD_PLUGIN_GOALS.toField( ArtifactInfo.lst2str( ai.getGoals() ) ) );
         }
     }
 
@@ -165,15 +166,15 @@ public class MavenPluginArtifactInfoIndexCreator
     {
         boolean res = false;
 
-        if ( "maven-plugin".equals( ai.packaging ) )
+        if ( "maven-plugin".equals( ai.getPackaging() ) )
         {
-            ai.prefix = doc.get( ArtifactInfo.PLUGIN_PREFIX );
+            ai.setPrefix( doc.get( ArtifactInfo.PLUGIN_PREFIX ) );
 
             String goals = doc.get( ArtifactInfo.PLUGIN_GOALS );
 
             if ( goals != null )
             {
-                ai.goals = ArtifactInfo.str2lst( goals );
+                ai.setGoals( ArtifactInfo.str2lst( goals ) );
             }
 
             res = true;

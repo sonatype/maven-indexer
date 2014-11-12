@@ -19,6 +19,9 @@ package org.apache.maven.index.updater;
  * under the License.
  */
 
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -43,13 +46,21 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.MultiFields;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.LockObtainFailedException;
+import org.apache.lucene.util.Bits;
+import org.apache.maven.index.ArtifactInfo;
+import org.apache.maven.index.context.DefaultIndexingContext;
 import org.apache.maven.index.context.DocumentFilter;
 import org.apache.maven.index.context.IndexUtils;
 import org.apache.maven.index.context.IndexingContext;
@@ -59,12 +70,11 @@ import org.apache.maven.index.fs.Lock;
 import org.apache.maven.index.fs.Locker;
 import org.apache.maven.index.incremental.IncrementalHandler;
 import org.apache.maven.index.updater.IndexDataReader.IndexDataReadResult;
-import org.codehaus.plexus.component.annotations.Component;
-import org.codehaus.plexus.component.annotations.Requirement;
-import org.codehaus.plexus.logging.AbstractLogEnabled;
 import org.codehaus.plexus.util.FileUtils;
 import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.io.RawInputStreamFacade;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A default index updater implementation
@@ -72,27 +82,29 @@ import org.codehaus.plexus.util.io.RawInputStreamFacade;
  * @author Jason van Zyl
  * @author Eugene Kuleshov
  */
-@Component( role = IndexUpdater.class )
+@Singleton
+@Named
 public class DefaultIndexUpdater
-    extends AbstractLogEnabled
     implements IndexUpdater
 {
 
-    @Requirement( role = IncrementalHandler.class )
-    IncrementalHandler incrementalHandler;
+    private final Logger logger = LoggerFactory.getLogger( getClass() );
 
-    @Requirement( role = IndexUpdateSideEffect.class )
-    private List<IndexUpdateSideEffect> sideEffects;
-
-    public DefaultIndexUpdater( final IncrementalHandler handler, final List<IndexUpdateSideEffect> mySideeffects )
+    protected Logger getLogger()
     {
-        incrementalHandler = handler;
-        sideEffects = mySideeffects;
+        return logger;
     }
 
-    public DefaultIndexUpdater()
-    {
+    private final IncrementalHandler incrementalHandler;
 
+    private final List<IndexUpdateSideEffect> sideEffects;
+
+
+    @Inject
+    public DefaultIndexUpdater( final IncrementalHandler incrementalHandler, final List<IndexUpdateSideEffect> sideEffects )
+    {
+        this.incrementalHandler = incrementalHandler;
+        this.sideEffects = sideEffects;
     }
 
     public IndexUpdateResult fetchAndUpdateIndex( final IndexUpdateRequest updateRequest )
@@ -206,8 +218,7 @@ public class DefaultIndexUpdater
             else
             {
                 // legacy transfer format
-                timestamp = unpackIndexArchive( is, directory, //
-                    updateRequest.getIndexingContext() );
+                throw new IllegalArgumentException("The legacy format is no longer supported by this version of maven-indexer.");
             }
 
             if ( updateRequest.getDocumentFilter() != null )
@@ -254,127 +265,23 @@ public class DefaultIndexUpdater
         }
     }
 
-    /**
-     * Unpack legacy index archive into a specified Lucene <code>Directory</code>
-     * 
-     * @param is a <code>ZipInputStream</code> with index data
-     * @param directory Lucene <code>Directory</code> to unpack index data to
-     * @return {@link Date} of the index update or null if it can't be read
-     */
-    public static Date unpackIndexArchive( final InputStream is, final Directory directory,
-                                           final IndexingContext context )
-        throws IOException
-    {
-        File indexArchive = File.createTempFile( "nexus-index", "" );
-
-        File indexDir = new File( indexArchive.getAbsoluteFile().getParentFile(), indexArchive.getName() + ".dir" );
-
-        indexDir.mkdirs();
-
-        FSDirectory fdir = FSDirectory.open( indexDir );
-
-        try
-        {
-            unpackDirectory( fdir, is );
-            copyUpdatedDocuments( fdir, directory, context );
-
-            Date timestamp = IndexUtils.getTimestamp( fdir );
-            IndexUtils.updateTimestamp( directory, timestamp );
-            return timestamp;
-        }
-        finally
-        {
-            IndexUtils.close( fdir );
-            indexArchive.delete();
-            IndexUtils.delete( indexDir );
-        }
-    }
-
-    private static void unpackDirectory( final Directory directory, final InputStream is )
-        throws IOException
-    {
-        byte[] buf = new byte[4096];
-
-        ZipEntry entry;
-
-        ZipInputStream zis = null;
-
-        try
-        {
-            zis = new ZipInputStream( is );
-
-            while ( ( entry = zis.getNextEntry() ) != null )
-            {
-                if ( entry.isDirectory() || entry.getName().indexOf( '/' ) > -1 )
-                {
-                    continue;
-                }
-
-                IndexOutput io = directory.createOutput( entry.getName() );
-                try
-                {
-                    int n = 0;
-
-                    while ( ( n = zis.read( buf ) ) != -1 )
-                    {
-                        io.writeBytes( buf, n );
-                    }
-                }
-                finally
-                {
-                    IndexUtils.close( io );
-                }
-            }
-        }
-        finally
-        {
-            IndexUtils.close( zis );
-        }
-    }
-
-    private static void copyUpdatedDocuments( final Directory sourcedir, final Directory targetdir,
-                                              final IndexingContext context )
-        throws CorruptIndexException, LockObtainFailedException, IOException
-    {
-        IndexWriter w = null;
-        IndexReader r = null;
-        try
-        {
-            r = IndexReader.open( sourcedir );
-            w = new NexusIndexWriter( targetdir, new NexusAnalyzer(), true );
-
-            for ( int i = 0; i < r.maxDoc(); i++ )
-            {
-                if ( !r.isDeleted( i ) )
-                {
-                    w.addDocument( IndexUtils.updateDocument( r.document( i ), context ) );
-                }
-            }
-
-            w.optimize();
-            w.commit();
-        }
-        finally
-        {
-            IndexUtils.close( w );
-            IndexUtils.close( r );
-        }
-    }
-
     private static void filterDirectory( final Directory directory, final DocumentFilter filter )
         throws IOException
     {
         IndexReader r = null;
+        IndexWriter w = null;
         try
         {
-            // explicitly RW reader needed
-            r = IndexReader.open( directory, false );
+            r = IndexReader.open( directory );
+            w = new NexusIndexWriter( directory, new NexusAnalyzer(), false );
+            
+            Bits liveDocs = MultiFields.getLiveDocs(r);
 
             int numDocs = r.maxDoc();
 
             for ( int i = 0; i < numDocs; i++ )
             {
-                if ( r.isDeleted( i ) )
+                if (liveDocs != null && ! liveDocs.get(i) )
                 {
                     continue;
                 }
@@ -383,23 +290,25 @@ public class DefaultIndexUpdater
 
                 if ( !filter.accept( d ) )
                 {
-                    r.deleteDocument( i );
+                    boolean success = w.tryDeleteDocument(r, i);
+                    //FIXME handle deletion failure
                 }
             }
+            w.commit();
         }
         finally
         {
             IndexUtils.close( r );
+            IndexUtils.close( w );
         }
 
-        IndexWriter w = null;
+        w = null;
         try
         {
             // analyzer is unimportant, since we are not adding/searching to/on index, only reading/deleting
             w = new NexusIndexWriter( directory, new NexusAnalyzer(), false );
 
-            w.optimize();
-
+            w.forceMerge(4);
             w.commit();
         }
         finally

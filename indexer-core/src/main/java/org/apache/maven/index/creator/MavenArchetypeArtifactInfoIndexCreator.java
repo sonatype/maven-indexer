@@ -19,6 +19,8 @@ package org.apache.maven.index.creator;
  * under the License.
  */
 
+import javax.inject.Named;
+import javax.inject.Singleton;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -29,10 +31,8 @@ import org.apache.lucene.document.Document;
 import org.apache.maven.index.ArtifactContext;
 import org.apache.maven.index.ArtifactInfo;
 import org.apache.maven.index.IndexerField;
-import org.apache.maven.index.context.IndexCreator;
 import org.apache.maven.index.util.zip.ZipFacade;
 import org.apache.maven.index.util.zip.ZipHandle;
-import org.codehaus.plexus.component.annotations.Component;
 
 /**
  * A Maven Archetype index creator used to detect and correct the artifact packaging to "maven-archetype" if the
@@ -42,7 +42,8 @@ import org.codehaus.plexus.component.annotations.Component;
  * 
  * @author cstamas
  */
-@Component( role = IndexCreator.class, hint = MavenArchetypeArtifactInfoIndexCreator.ID )
+@Singleton
+@Named (MavenArchetypeArtifactInfoIndexCreator.ID)
 public class MavenArchetypeArtifactInfoIndexCreator
     extends AbstractIndexCreator
 {
@@ -65,7 +66,7 @@ public class MavenArchetypeArtifactInfoIndexCreator
         ArtifactInfo ai = ac.getArtifactInfo();
 
         // we need the file to perform these checks, and those may be only JARs
-        if ( artifact != null && artifact.isFile() && !MAVEN_ARCHETYPE_PACKAGING.equals( ai.packaging )
+        if ( artifact != null && artifact.isFile() && !MAVEN_ARCHETYPE_PACKAGING.equals( ai.getPackaging() )
             && artifact.getName().endsWith( ".jar" ) )
         {
             // TODO: recheck, is the following true? "Maven plugins and Maven Archetypes can be only JARs?"
@@ -94,7 +95,7 @@ public class MavenArchetypeArtifactInfoIndexCreator
             {
                 if ( handle.hasEntry( path ) )
                 {
-                    ai.packaging = MAVEN_ARCHETYPE_PACKAGING;
+                    ai.setPackaging( MAVEN_ARCHETYPE_PACKAGING );
 
                     return;
                 }

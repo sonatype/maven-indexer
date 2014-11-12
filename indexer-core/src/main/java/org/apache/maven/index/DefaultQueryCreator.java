@@ -19,14 +19,15 @@ package org.apache.maven.index;
  * under the License.
  */
 
+import javax.inject.Named;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.io.StringReader;
-
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.queryParser.ParseException;
-import org.apache.lucene.queryParser.QueryParser;
-import org.apache.lucene.queryParser.QueryParser.Operator;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.queryparser.classic.QueryParser.Operator;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.PrefixQuery;
@@ -39,9 +40,8 @@ import org.apache.maven.index.creator.JarFileContentsIndexCreator;
 import org.apache.maven.index.creator.MinimalArtifactInfoIndexCreator;
 import org.apache.maven.index.expr.SearchExpression;
 import org.apache.maven.index.expr.SearchTyped;
-import org.codehaus.plexus.component.annotations.Component;
-import org.codehaus.plexus.component.annotations.Requirement;
-import org.codehaus.plexus.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A default {@link QueryCreator} constructs Lucene query for provided query text.
@@ -63,12 +63,13 @@ import org.codehaus.plexus.logging.Logger;
  * 
  * @author Eugene Kuleshov
  */
-@Component( role = QueryCreator.class )
+@Singleton
+@Named
 public class DefaultQueryCreator
     implements QueryCreator
 {
-    @Requirement
-    private Logger logger;
+
+    private final Logger logger = LoggerFactory.getLogger( getClass() );
 
     protected Logger getLogger()
     {
@@ -140,7 +141,7 @@ public class DefaultQueryCreator
         }
         else
         {
-            QueryParser qp = new QueryParser( Version.LUCENE_24, field, new NexusAnalyzer() );
+            QueryParser qp = new QueryParser( Version.LUCENE_46, field, new NexusAnalyzer() );
 
             // small cheap trick
             // if a query is not "expert" (does not contain field:val kind of expression)
@@ -272,7 +273,7 @@ public class DefaultQueryCreator
             {
                 String qpQuery = query.toLowerCase().replaceAll( "\\.", " " ).replaceAll( "/", " " );
                 // tokenization should happen against the field!
-                QueryParser qp = new QueryParser( Version.LUCENE_30, indexerField.getKey(), new NexusAnalyzer() );
+                QueryParser qp = new QueryParser( Version.LUCENE_46, indexerField.getKey(), new NexusAnalyzer() );
                 qp.setDefaultOperator( Operator.AND );
                 return qp.parse( qpQuery );
             }
@@ -305,7 +306,7 @@ public class DefaultQueryCreator
                 String qpQuery = query;
 
                 // tokenization should happen against the field!
-                QueryParser qp = new QueryParser( Version.LUCENE_30, indexerField.getKey(), new NexusAnalyzer() );
+                QueryParser qp = new QueryParser( Version.LUCENE_46, indexerField.getKey(), new NexusAnalyzer() );
                 qp.setDefaultOperator( Operator.AND );
 
                 // small cheap trick
@@ -467,7 +468,8 @@ public class DefaultQueryCreator
     {
         try
         {
-            TokenStream ts = nexusAnalyzer.reusableTokenStream( indexerField.getKey(), new StringReader( query ) );
+            TokenStream ts = nexusAnalyzer.tokenStream(indexerField.getKey(), new StringReader(query));
+            ts.reset();
 
             int result = 0;
 
@@ -475,6 +477,9 @@ public class DefaultQueryCreator
             {
                 result++;
             }
+            
+            ts.end();
+            ts.close();
 
             return result;
         }

@@ -19,6 +19,9 @@ package org.apache.maven.index.treeview;
  * under the License.
  */
 
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,18 +39,22 @@ import org.apache.maven.index.IteratorSearchResponse;
 import org.apache.maven.index.MAVEN;
 import org.apache.maven.index.expr.SourcedSearchExpression;
 import org.apache.maven.index.treeview.TreeNode.Type;
-import org.codehaus.plexus.component.annotations.Component;
-import org.codehaus.plexus.component.annotations.Requirement;
-import org.codehaus.plexus.logging.AbstractLogEnabled;
 import org.codehaus.plexus.util.StringUtils;
 
-@Component( role = IndexTreeView.class )
+@Singleton
+@Named
 public class DefaultIndexTreeView
-    extends AbstractLogEnabled
     implements IndexTreeView
 {
-    @Requirement
-    private Indexer indexer;
+
+    private final Indexer indexer;
+
+
+    @Inject
+    public DefaultIndexTreeView( Indexer indexer )
+    {
+        this.indexer = indexer;
+    }
 
     protected Indexer getIndexer()
     {
@@ -123,7 +130,7 @@ public class DefaultIndexTreeView
 
     /**
      * @param root
-     * @param factory
+     * @param request
      * @param allGroups
      * @throws IOException
      */
@@ -144,13 +151,13 @@ public class DefaultIndexTreeView
         {
             for ( ArtifactInfo ai : artifacts )
             {
-                String versionKey = Type.V + ":" + ai.artifactId + ":" + ai.version;
+                String versionKey = Type.V + ":" + ai.getArtifactId() + ":" + ai.getVersion();
 
                 TreeNode versionResource = folders.get( versionKey );
 
                 if ( versionResource == null )
                 {
-                    String artifactKey = Type.A + ":" + ai.artifactId;
+                    String artifactKey = Type.A + ":" + ai.getArtifactId();
 
                     TreeNode artifactResource = folders.get( artifactKey );
 
@@ -163,7 +170,7 @@ public class DefaultIndexTreeView
                         // here comes the twist: we have to search for parent G node
                         String partialGroupId = null;
 
-                        String[] groupIdElems = ai.groupId.split( "\\." );
+                        String[] groupIdElems = ai.getGroupId().split( "\\." );
 
                         for ( String groupIdElem : groupIdElems )
                         {
@@ -275,7 +282,7 @@ public class DefaultIndexTreeView
     {
         StringBuilder sb = new StringBuilder( "/" );
 
-        sb.append( ai.groupId.replaceAll( "\\.", "/" ) );
+        sb.append( ai.getGroupId().replaceAll( "\\.", "/" ) );
 
         if ( MAVEN.GROUP_ID.equals( field ) )
         {
@@ -283,7 +290,7 @@ public class DefaultIndexTreeView
             return sb.append( "/" ).toString();
         }
 
-        sb.append( "/" ).append( ai.artifactId );
+        sb.append( "/" ).append( ai.getArtifactId() );
 
         if ( MAVEN.ARTIFACT_ID.equals( field ) )
         {
@@ -291,7 +298,7 @@ public class DefaultIndexTreeView
             return sb.append( "/" ).toString();
         }
 
-        sb.append( "/" ).append( ai.version );
+        sb.append( "/" ).append( ai.getVersion() );
 
         if ( MAVEN.VERSION.equals( field ) )
         {
@@ -299,14 +306,14 @@ public class DefaultIndexTreeView
             return sb.append( "/" ).toString();
         }
 
-        sb.append( "/" ).append( ai.artifactId ).append( "-" ).append( ai.version );
+        sb.append( "/" ).append( ai.getArtifactId() ).append( "-" ).append( ai.getVersion() );
 
-        if ( ai.classifier != null )
+        if ( ai.getClassifier() != null )
         {
-            sb.append( "-" ).append( ai.classifier );
+            sb.append( "-" ).append( ai.getClassifier() );
         }
 
-        sb.append( "." ).append( ai.fextension == null ? "jar" : ai.fextension );
+        sb.append( "." ).append( ai.getFileExtension() == null ? "jar" : ai.getFileExtension() );
 
         return sb.toString();
     }

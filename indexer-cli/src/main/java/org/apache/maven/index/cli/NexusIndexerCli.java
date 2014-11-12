@@ -33,6 +33,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.maven.index.ArtifactContext;
 import org.apache.maven.index.ArtifactInfo;
@@ -46,6 +47,9 @@ import org.apache.maven.index.packer.IndexPacker;
 import org.apache.maven.index.packer.IndexPackingRequest;
 import org.apache.maven.index.packer.IndexPackingRequest.IndexFormat;
 import org.apache.maven.index.updater.DefaultIndexUpdater;
+import org.codehaus.plexus.DefaultContainerConfiguration;
+import org.codehaus.plexus.DefaultPlexusContainer;
+import org.codehaus.plexus.PlexusConstants;
 import org.codehaus.plexus.PlexusContainer;
 import org.codehaus.plexus.classworlds.ClassWorld;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
@@ -94,8 +98,6 @@ public class NexusIndexerCli
     public static final char CREATE_FILE_CHECKSUMS = 's';
 
     public static final char INCREMENTAL_CHUNK_KEEP_COUNT = 'k';
-
-    public static final char LEGACY = 'l';
 
     public static final char UNPACK = 'u';
 
@@ -204,10 +206,7 @@ public class NexusIndexerCli
         .withDescription( "Create checksums for all files (sha1, md5)." ).create( CREATE_FILE_CHECKSUMS ) );
 
         options.addOption( OptionBuilder.withLongOpt( "type" ).hasArg() //
-        .withDescription( "Indexer type (default, min, full or coma separated list of custom types)." ).create( TYPE ) );
-
-        options.addOption( OptionBuilder.withLongOpt( "legacy" ) //
-        .withDescription( "Build legacy .zip index file" ).create( LEGACY ) );
+        .withDescription( "Indexer type (default, min, full or comma separated list of custom types)." ).create( TYPE ) );
 
         options.addOption( OptionBuilder.withLongOpt( "unpack" ) //
         .withDescription( "Unpack an index file" ).create( UNPACK ) );
@@ -240,6 +239,14 @@ public class NexusIndexerCli
     public void invokePlexusComponent( final CommandLine cli, PlexusContainer plexus )
         throws Exception
     {
+        final DefaultContainerConfiguration configuration = new DefaultContainerConfiguration();
+        configuration.setClassWorld( ( (DefaultPlexusContainer) plexus ).getClassWorld() );
+        configuration.setClassPathScanning( PlexusConstants.SCANNING_INDEX );
+
+        // replace plexus, as PlexusCli is blunt, does not allow to modify configuration
+        // TODO: get rid of PlexusCli use!
+        plexus = new DefaultPlexusContainer( configuration );
+
         if ( cli.hasOption( QUIET ) )
         {
             setLogLevel( plexus, Logger.LEVEL_DISABLED );
@@ -297,8 +304,6 @@ public class NexusIndexerCli
 
         boolean createIncrementalChunks = cli.hasOption( CREATE_INCREMENTAL_CHUNKS );
 
-        boolean createLegacyIndex = cli.hasOption( LEGACY );
-
         boolean debug = cli.hasOption( DEBUG );
 
         boolean quiet = cli.hasOption( QUIET );
@@ -332,11 +337,6 @@ public class NexusIndexerCli
             {
                 System.err.printf( "Will create baseline file.\n" );
             }
-
-            if ( createLegacyIndex )
-            {
-                System.err.printf( "Will also create legacy .zip index file.\n" );
-            }
         }
 
         NexusIndexer indexer = plexus.lookup( NexusIndexer.class );
@@ -352,6 +352,7 @@ public class NexusIndexerCli
             null, // index update url
             indexers );
 
+        final IndexSearcher indexSearcher = context.acquireIndexSearcher();
         try
         {
             IndexPacker packer = plexus.lookup( IndexPacker.class );
@@ -360,20 +361,13 @@ public class NexusIndexerCli
 
             indexer.scan( context, listener, true );
 
-            IndexPackingRequest request = new IndexPackingRequest( context, outputFolder );
+            IndexPackingRequest request = new IndexPackingRequest( context, indexSearcher.getIndexReader(), outputFolder );
 
             request.setCreateChecksumFiles( createChecksums );
 
             request.setCreateIncrementalChunks( createIncrementalChunks );
 
-            if ( createLegacyIndex )
-            {
-                request.setFormats( Arrays.asList( IndexFormat.FORMAT_LEGACY, IndexFormat.FORMAT_V1 ) );
-            }
-            else
-            {
-                request.setFormats( Arrays.asList( IndexFormat.FORMAT_V1 ) );
-            }
+            request.setFormats( Arrays.asList( IndexFormat.FORMAT_V1 ) );
 
             if ( chunkCount != null )
             {
@@ -389,6 +383,7 @@ public class NexusIndexerCli
         }
         finally
         {
+            context.releaseIndexSearcher( indexSearcher );
             indexer.removeIndexingContext( context, false );
         }
     }
@@ -561,10 +556,10 @@ public class NexusIndexerCli
 
             ArtifactInfo ai = ac.getArtifactInfo();
 
-            if ( !quiet && debug && "maven-plugin".equals( ai.packaging ) )
+            if ( !quiet && debug && "maven-plugin".equals( ai.getPackaging() ) )
             {
                 System.err.printf( "Plugin: %s:%s:%s - %s %s\n", //
-                    ai.groupId, ai.artifactId, ai.version, ai.prefix, "" + ai.goals );
+                    ai.getGroupId(), ai.getArtifactId(), ai.getVersion(), ai.getPrefix(), "" + ai.getGoals() );
             }
 
             if ( !quiet && ( debug || ( t - ts ) > 2000L ) )
