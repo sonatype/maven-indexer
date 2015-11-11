@@ -66,12 +66,6 @@ under the License.
     <system>Jenkins</system>
     <url>https://builds.apache.org/job/maven-indexer/</url>
   </ciManagement>
-  <distributionManagement>
-    <site>
-      <id>apache.website</id>
-      <url>scm:svn:https://svn.apache.org/repos/infra/websites/production/maven/content/${maven.site.path}</url>
-    </site>
-  </distributionManagement>
 
   <properties>
     <surefire.redirectTestOutputToFile>false</surefire.redirectTestOutputToFile>
