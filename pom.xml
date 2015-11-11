@@ -23,7 +23,7 @@ under the License.
   <parent>
     <groupId>org.apache.maven</groupId>
     <artifactId>maven-parent</artifactId>
-    <version>23</version>
+    <version>24</version>
   </parent>
 
   <groupId>org.apache.maven.indexer</groupId>
@@ -37,7 +37,7 @@ under the License.
     of Maven repositories. The Indexes are produced and consumed by all major tools in the ecosystem.
   </description>
 
-  <url>${siteUrl}</url>
+  <url>http://maven.apache.org/maven-indexer/</url>
 
   <contributors>
     <contributor>
@@ -66,12 +66,17 @@ under the License.
     <system>Jenkins</system>
     <url>https://builds.apache.org/job/maven-indexer/</url>
   </ciManagement>
+  <distributionManagement>
+    <site>
+      <id>apache.website</id>
+      <url>scm:svn:https://svn.apache.org/repos/infra/websites/production/maven/content/${maven.site.path}</url>
+    </site>
+  </distributionManagement>
 
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <surefire.redirectTestOutputToFile>false</surefire.redirectTestOutputToFile>
-
-    <siteUrl>http://maven.apache.org/maven-indexer-archives/maven-indexer-${project.version}</siteUrl>
+    <maven.compiler.source>1.6</maven.compiler.source>
+    <maven.compiler.target>1.6</maven.compiler.target>    
 
     <sisu-inject-plexus.version>2.2.3</sisu-inject-plexus.version>
     <lucene.version>3.6.2</lucene.version>
@@ -81,12 +86,7 @@ under the License.
     <wagon.version>2.3</wagon.version>
     <truezip.version>7.6.6</truezip.version>
 
-    <maven.site.cache>${user.home}/maven-sites</maven.site.cache>
-    <maven.indexer.siteFilePath>${maven.site.cache}/maven-indexer-${project.version}</maven.indexer.siteFilePath>
-    <maven.indexer.siteUrlDeployment>file://${maven.indexer.siteFilePath}</maven.indexer.siteUrlDeployment>
-    <maven.indexer.scmPubCheckoutDirectory>${maven.site.cache}/maven-indexer-site-content-${project.version}</maven.indexer.scmPubCheckoutDirectory>
-    <maven.indexer.scmPubUrl>https://svn.apache.org/repos/infra/websites/production/maven/content/maven-indexer-archives/maven-indexer-${project.version}</maven.indexer.scmPubUrl>
-
+    <maven.site.path>maven-indexer-archives/maven-indexer-LATEST</maven.site.path>
   </properties>
 
   <distributionManagement>
@@ -144,7 +144,7 @@ under the License.
       <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
-        <version>4.10</version>
+        <version>4.12</version>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -172,6 +172,7 @@ under the License.
     <module>indexer-core</module>
     <module>indexer-artifact</module>
     <module>indexer-cli</module>
+    <module>indexer-reader</module>
   </modules>
 
   <build>
@@ -239,10 +240,30 @@ under the License.
           </execution>
         </executions>
       </plugin>
+      <plugin><!-- TODO remove when upgrading to maven-parent 25 -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>enforce-bytecode-version</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <enforceBytecodeVersion>
+                  <maxJdkVersion>${maven.compiler.target}</maxJdkVersion>
+                </enforceBytecodeVersion>
+              </rules>
+              <fail>true</fail>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
-        <version>0.8</version>
+        <version>0.10</version>
         <executions>
           <execution>
             <id>rat-verify</id>
@@ -257,6 +278,7 @@ under the License.
                 <exclude>NOTICE</exclude>
                 <exclude>.git/**</exclude>
                 <exclude>.idea/**</exclude>
+                <exclude>**/*.iml</exclude>
                 <!-- exlude some test resources from rat analysis -->
                 <exclude>src/test/**/*.sha1</exclude>
                 <exclude>src/test/**/*.md5</exclude>
@@ -298,17 +320,17 @@ under the License.
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-site-plugin</artifactId>
-          <version>3.2</version>
+          <version>3.3</version>
+          <configuration>
+            <topSiteURL>scm:svn:https://svn.apache.org/repos/infra/websites/production/maven/content/${maven.site.path}</topSiteURL>
+          </configuration>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-scm-publish-plugin</artifactId>
-          <version>1.0-beta-2</version>
+          <version>1.0</version>
           <configuration>
-            <checkoutDirectory>${maven.indexer.scmPubCheckoutDirectory}</checkoutDirectory>
-            <pubScmUrl>scm:svn:${maven.indexer.scmPubUrl}</pubScmUrl>
-            <checkinComment>Apache Maven Indexer site deployment</checkinComment>
-            <content>${maven.indexer.siteFilePath}</content>
+            <checkoutDirectory>${maven.site.cache}/${maven.site.path}</checkoutDirectory>
             <tryUpdate>true</tryUpdate>
           </configuration>
         </plugin>
@@ -327,12 +349,12 @@ under the License.
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-project-info-reports-plugin</artifactId>
-        <version>2.6</version>
+        <version>2.7</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.9</version>
+        <version>2.9.1</version>
         <configuration>
           <notimestamp>true</notimestamp>
         </configuration>
@@ -348,18 +370,4 @@ under the License.
       </plugin>
     </plugins>
   </reporting>
-
-  <profiles>
-    <profile>
-      <id>site-release</id>
-
-      <properties>
-        <siteUrl>http://maven.apache.org/maven-indexer/</siteUrl>
-        <maven.indexer.siteFilePath>${maven.site.cache}/maven-indexer</maven.indexer.siteFilePath>
-        <maven.indexer.siteUrlDeployment>file://${maven.indexer.siteFilePath}</maven.indexer.siteUrlDeployment>
-        <maven.indexer.scmPubCheckoutDirectory>${maven.site.cache}/maven-indexer-site-content</maven.indexer.scmPubCheckoutDirectory>
-        <maven.indexer.scmPubUrl>https://svn.apache.org/repos/infra/websites/production/maven/content/maven-indexer</maven.indexer.scmPubUrl>
-      </properties>
-    </profile>
-  </profiles>
 </project>
