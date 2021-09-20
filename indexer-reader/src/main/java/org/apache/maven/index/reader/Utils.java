@@ -84,7 +84,7 @@ public final class Utils
     if (inputStream == null) {
       return null;
     }
-    return loadProperties(resource.read());
+    return loadProperties(inputStream);
   }
 
   /**
