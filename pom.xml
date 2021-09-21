@@ -81,16 +81,46 @@ under the License.
     <truezip.version>7.6.6</truezip.version>
 
     <maven.site.path>maven-indexer-archives/maven-indexer-LATEST</maven.site.path>
+
+    <!--
+        Keep in sync with https://github.com/sonatype/buildsupport/blob/master/private-parent/pom.xml
+        -->
+    <private.serverId>sonatype-private</private.serverId>
+    <private.nexusUrl>https://repository.sonatype.org</private.nexusUrl>
+
+    <private-release.serverId>${private.serverId}</private-release.serverId>
+    <private-release.url>
+      https://repository.sonatype.org/service/local/staging/deploy/maven2
+    </private-release.url>
+
+    <private-snapshot.serverId>${private.serverId}</private-snapshot.serverId>
+    <private-snapshot.url>
+      https://repository.sonatype.org/content/repositories/sonatype-internal-snapshots
+    </private-snapshot.url>
+
+    <staging.serverId>${private.serverId}</staging.serverId>
+    <staging.nexusUrl>${private.nexusUrl}</staging.nexusUrl>
+
   </properties>
 
   <distributionManagement>
+<!--    <repository>-->
+<!--      <id>forge-releases</id>-->
+<!--      <url>https://repository.sonatype.org/content/repositories/releases</url>-->
+<!--    </repository>-->
+<!--    <snapshotRepository>-->
+<!--      <id>forge-snapshots</id>-->
+<!--      <url>https://repository.sonatype.org/content/repositories/snapshots</url>-->
+<!--    </snapshotRepository>-->
+
     <repository>
-      <id>forge-releases</id>
-      <url>https://repository.sonatype.org/content/repositories/releases</url>
+      <id>${private-release.serverId}</id>
+      <url>${private-release.url}</url>
     </repository>
+
     <snapshotRepository>
-      <id>forge-snapshots</id>
-      <url>https://repository.sonatype.org/content/repositories/snapshots</url>
+      <id>${private-snapshot.serverId}</id>
+      <url>${private-snapshot.url}</url>
     </snapshotRepository>
   </distributionManagement>
 
