@@ -2,8 +2,7 @@
 
 mavenPipeline(
   javaVersion: 'Java 8',
-  useMvnw: false,
+  suppressMavenDownloadOutput: true,
   usePublicSettingsFile: true,
-  useEventSpy: false,
-  testResults: [ '**/target/*-reports/*.xml' ]
+  useEventSpy: false
 )
