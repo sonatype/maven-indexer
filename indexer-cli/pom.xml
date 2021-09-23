@@ -25,7 +25,7 @@
   <parent>
     <groupId>org.apache.maven.indexer</groupId>
     <artifactId>maven-indexer</artifactId>
-    <version>5.1.2-202109-SNAPSHOT</version>
+    <version>5.1.2-202109</version>
   </parent>
 
   <artifactId>indexer-cli</artifactId>
