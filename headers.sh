@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,9 +18,24 @@
 # under the License.
 #
 
-#Thu May 28 14:05:32 BRT 2009
-nexus.index.time=20090528170531.406 +0000
-nexus.index.chain-id=1243530332531
-nexus.index.id=snapshots-local
-nexus.index.timestamp=20090528170531.406 +0000
-nexus.index.last-incremental=0
+dirname=`dirname $0`
+dirname=`cd "$dirname" && pwd`
+cd "$dirname"
+
+op=$1; shift
+case "$op" in
+    'check' | 'format')
+        ;;
+     *)
+        echo "usage: `basename $0` { check | format } [mvn-options]"
+        exit 1
+esac
+
+# still depends on profiles defined in https://github.com/sonatype/buildsupport/blob/master/pom.xml
+mvn -f ./pom.xml -N -P license-${op} -P -include-private "$@"
+
+mvn -f ./pom.xml -N -P license-${op} -P -include-private -P header-extjs "$@"
+
+if [ -f "private/pom.xml" ]; then
+    mvn -f ./pom.xml -pl :nexus-private -P license-${op} "$@"
+fi
